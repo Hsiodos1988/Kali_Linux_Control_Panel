@@ -88,7 +88,7 @@ sudo apt install -y python3-pil python3-pil.imagetk
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/kali-control-panel.git
+https://github.com/Hsiodos1988/Kali_Linux_Control_Panel.git
 
 # Navigate to the project directory
 cd kali-control-panel
@@ -105,7 +105,7 @@ sudo python3 kali_control_panel.py
 ```bash
 # Download the script directly
 wget https://raw.githubusercontent.com/yourusername/kali-control-panel/main/kali_control_panel.py
-
+https://github.com/Hsiodos1988/Kali_Linux_Control_Panel.git
 # Make it executable
 chmod +x kali_control_panel.py
 
