@@ -7,10 +7,21 @@ import tkinter.messagebox as messagebox
 import random
 import platform
 import socket
-
 #------------------------------------------------------
 # Δημιουργία του GUI για τον έλεγχο του Kali Linux
 class Application(tk.Frame):
+#------------------------------------------------------
+    def show_mac_address(self):
+        try:
+            interface = self.selected_interface
+            with open(f"/sys/class/net/{interface}/address", "r") as f:
+                output = f.read().strip()
+            from tkinter import messagebox
+            messagebox.showinfo("MAC Διεύθυνση", f"{interface} → {output}")
+        except Exception as e:
+            from tkinter import messagebox
+            messagebox.showerror("Σφάλμα", f"Αδυναμία ανάγνωσης MAC: {e}")
+#------------------------------------------------------
     def __init__(self, master=None):
         super().__init__(master)
         self.master = master
@@ -21,10 +32,10 @@ class Application(tk.Frame):
         self.update_firewall_status()
         self.update_interface_mode()
 
-    #------------------------------------------------------
-    # Δημιουργία των γραφικών στοιχείων του GUI
+#------------------------------------------------------
+# Δημιουργία των γραφικών στοιχείων του GUI
+# Προσπάθεια φόρτωσης εικόνας - αν δεν υπάρχει, συνέχισε χωρίς αυτή
     def create_widgets(self):
-        # Προσπάθεια φόρτωσης εικόνας - αν δεν υπάρχει, συνέχισε χωρίς αυτή
         try:
             self.image = Image.open("kalilinux.png")
             self.photo = ImageTk.PhotoImage(self.image)
@@ -33,48 +44,64 @@ class Application(tk.Frame):
         except FileNotFoundError:
             print("Warning: kalilinux.png not found, continuing without background image")
             self.configure(bg="#2c3e50")
-
-        # Ετικέτα με το λογότυπο Kali Linux
+#-------------------------------------------------------
+# Ετικέτα με το λογότυπο Kali Linux
         self.kali_label = tk.Label(self, text="Kali Linux Control Panel", 
-                                  font=("Arial", 24, "bold"), fg="#e74c3c", 
+                                  font=("Arial", 18, "bold"), fg="#e74c3c", 
                                   bg=self.cget("bg") if hasattr(self, 'cget') else "#2c3e50")
-        self.kali_label.place(x=200, y=10)
-
+        self.kali_label.place(x=10, y=10)
+#-------------------------------------------------------
         # System Info Button
+#relx=Αριστερό, rely=Κάτω, relwidth=Πλατός,anchor=Νότος
         self.system_info_button = tk.Button(self, text="System Info", 
                                           command=self.show_system_info, 
                                           bg="#3498db", fg="white", 
                                           font=("Arial", 10, "bold"))
-        self.system_info_button.place(relx=1.0, rely=0.0, anchor="ne", relwidth=0.25)
-        
+        self.system_info_button.place(relx=1.0, rely=0.0,anchor="ne", relwidth=0.25)
+#-------------------------------------------------------
         # Interface Selection
         self.interface_select_button = tk.Button(self, text=f"Interface: {self.selected_interface}", 
                                                 command=self.select_interface,
                                                 bg="#9b59b6", fg="white", font=("Arial", 10, "bold"))
         self.interface_select_button.place(relx=0.165, rely=0.80, relwidth=0.33, anchor=tk.S)
-
+#-------------------------------------------------------        
         # Monitor/Managed buttons
         self.monitor_btn = tk.Button(self, text="Monitor", 
                                    command=lambda: self.set_interface_mode('monitor'),
                                    bg="#e67e22", fg="white", font=("Arial", 10, "bold"))
-        self.monitor_btn.place(relx=0.5, rely=0.80, relwidth=0.33, anchor=tk.S)
+        self.monitor_btn.place(relx=0.495, rely=0.80, relwidth=0.329, anchor=tk.S)
 
         self.managed_btn = tk.Button(self, text="Managed", 
                                    command=lambda: self.set_interface_mode('managed'),
                                    bg="#27ae60", fg="white", font=("Arial", 10, "bold"))
-        self.managed_btn.place(relx=0.835, rely=0.80, relwidth=0.33, anchor=tk.S)
+        self.managed_btn.place(relx=0.824, rely=0.801, relwidth=0.329, anchor=tk.S)
+#-------------------------------------------------------
+        # Public IP Check Button        
+        self.ip_check_button = tk.Button(
+    self, text="Check Public IP", command=self.show_public_ip,
+    bg="#3498db", fg="white", font=("Arial", 10, "bold")
+)
+        self.ip_check_button.place(x=50,y=90) 
+#-------------------------------------------------------
+        # MAC Address Check Button
+        self.mac_check_button = tk.Button(
+        self, text="Check MAC Address", command=self.show_mac_address,
+    bg="#2980b9", fg="white", font=("Arial", 10, "bold")
+)
+        self.mac_check_button.place(relx=1.0, rely=0.11, anchor="ne", relwidth=0.25)
 
+#-------------------------------------------------------
         # Interface Mode Status Button
         self.create_interface_mode_button()
-        
+#-------------------------------------------------------        
         # System management buttons
         self.create_update_button()
         self.create_upgrade_button()
         self.create_fix_broken_button()
         self.create_reset_buttons()
         self.create_clean_button()
-
-    #------------------------------------------------------
+#------------------------------------------------------
+#update buttons για την ενημέρωση και αναβάθμιση του συστήματος
     def create_update_button(self):
         self.update_button = tk.Button(self, text="Update", command=self.update_system,
                                      bg="#34495e", fg="white", font=("Arial", 9, "bold"))
@@ -88,8 +115,7 @@ class Application(tk.Frame):
             messagebox.showinfo("Success", "System updated successfully!")
         except subprocess.CalledProcessError as e:
             messagebox.showerror("Error", f"Update failed: {e}")
-
-    #------------------------------------------------------
+#------------------------------------------------------
     def create_upgrade_button(self):
         self.upgrade_button = tk.Button(self, text="Upgrade", command=self.upgrade_system,
                                       bg="#34495e", fg="white", font=("Arial", 9, "bold"))
@@ -103,8 +129,7 @@ class Application(tk.Frame):
             messagebox.showinfo("Success", "System upgraded successfully!")
         except subprocess.CalledProcessError as e:
             messagebox.showerror("Error", f"Upgrade failed: {e}")
-
-    #------------------------------------------------------
+#------------------------------------------------------
     def create_fix_broken_button(self):
         self.fix_broken_button = tk.Button(self, text="Fix Broken", command=self.fix_broken,
                                          bg="#34495e", fg="white", font=("Arial", 9, "bold"))
@@ -118,8 +143,7 @@ class Application(tk.Frame):
             messagebox.showinfo("Success", "Broken packages fixed!")
         except subprocess.CalledProcessError as e:
             messagebox.showerror("Error", f"Fix failed: {e}")
-
-    #------------------------------------------------------
+#------------------------------------------------------
     def create_clean_button(self):
         self.clean_system_button = tk.Button(self, text="Clean System", command=self.clean_system,
                                            bg="#16a085", fg="white", font=("Arial", 10, "bold"))
@@ -137,8 +161,7 @@ class Application(tk.Frame):
             messagebox.showinfo("Success", "System cleaned successfully!")
         except subprocess.CalledProcessError as e:
             messagebox.showerror("Error", f"Clean failed: {e}")
-
-    #------------------------------------------------------
+#------------------------------------------------------
     # Δημιουργία κουμπιών επανεκκίνησης και ελέγχου του συστήματος
     def create_reset_buttons(self):
         # Network Interface Controls
@@ -153,7 +176,7 @@ class Application(tk.Frame):
         self.reset_system_button = tk.Button(self, text="Reset System", command=self.reset_system,
                                            bg="#c0392b", fg="white", font=("Arial", 9, "bold"))
         self.reset_system_button.place(relx=0.66, rely=0.98, relwidth=0.33, anchor=tk.SW)
-
+#-------------------------------------------------------
         # Firewall Controls
         self.restart_firewall_button = tk.Button(self, text="Restart Firewall", command=self.reset_firewall,
                                                 bg="#8e44ad", fg="white", font=("Arial", 9, "bold"))
@@ -166,17 +189,17 @@ class Application(tk.Frame):
         self.firewall_status_button = tk.Button(self, text="Firewall: Unknown", bg="gray",
                                               font=("Arial", 9, "bold"))
         self.firewall_status_button.place(relx=0.66, rely=0.92, relwidth=0.33, anchor=tk.SW)
-        
+#-------------------------------------------------------        
         # Network Configuration
         self.change_mac_button = tk.Button(self, text="Change MAC", command=self.show_mac_options,
                                          bg="#2980b9", fg="white", font=("Arial", 10, "bold"))
         self.change_mac_button.place(relx=0.33, rely=0.86, relwidth=0.33, anchor=tk.SW)
+#-------------------------------------------------------
 
         self.change_ip_button = tk.Button(self, text="Change IP", command=self.show_ip_options,
                                         bg="#2980b9", fg="white", font=("Arial", 10, "bold"))
         self.change_ip_button.place(relx=0.66, rely=0.86, relwidth=0.33, anchor=tk.SW)
-
-    #------------------------------------------------------
+#------------------------------------------------------
     # Επανεκκίνηση της ασύρματης διεπαφής
     def reset_wifi(self):
         try:
@@ -188,8 +211,7 @@ class Application(tk.Frame):
             messagebox.showinfo("Success", f"Interface {self.selected_interface} restarted successfully!")
         except subprocess.CalledProcessError as e:
             messagebox.showerror("Error", f"Failed to restart interface: {e}")
-
-    #------------------------------------------------------
+#------------------------------------------------------
     def restart_manager(self):
         try:
             messagebox.showinfo("Info", "Restarting NetworkManager...")
@@ -197,8 +219,7 @@ class Application(tk.Frame):
             messagebox.showinfo("Success", "NetworkManager restarted successfully!")
         except subprocess.CalledProcessError as e:
             messagebox.showerror("Error", f"Failed to restart NetworkManager: {e}")
-
-    #------------------------------------------------------
+#------------------------------------------------------
     def reset_firewall(self):
         try:
             if messagebox.askokcancel("Confirm", "This will reset all firewall rules. Continue?"):
@@ -234,15 +255,14 @@ class Application(tk.Frame):
         # Update every 5 seconds
         self.after(5000, self.update_firewall_status)
 
-    #------------------------------------------------------
+#------------------------------------------------------
     def reset_system(self):
         if messagebox.askokcancel("Confirm Reboot", "This will reboot the system. Continue?"):
             try:
                 subprocess.run(["sudo", "reboot"], check=True)
             except subprocess.CalledProcessError as e:
                 messagebox.showerror("Error", f"Failed to reboot: {e}")
-
-    #------------------------------------------------------ 
+#------------------------------------------------------ 
     def show_mac_options(self):
         choice = messagebox.askquestion("Αλλαγή MAC", "Θες αυτόματη αλλαγή MAC; (Random)")
         if choice == 'yes':
@@ -270,8 +290,7 @@ class Application(tk.Frame):
             messagebox.showinfo("Success", f"New MAC set: {mac}")
         except subprocess.CalledProcessError as e:
             messagebox.showerror("Error", f"Failed to change MAC: {e}")
-
-    #------------------------------------------------------
+#------------------------------------------------------
     def show_ip_options(self):
         choice = messagebox.askquestion("Αλλαγή IP", "Θες αυτόματη αλλαγή IP (μέσω DHCP);")
         if choice == 'yes':
@@ -312,8 +331,7 @@ class Application(tk.Frame):
             messagebox.showerror("Error", f"Failed to set IP: {e}")
         except ValueError as e:
             messagebox.showerror("Error", f"Invalid netmask format: {e}")
-
-    #------------------------------------------------------
+#------------------------------------------------------
     # Εμφάνιση πληροφοριών συστήματος
     def show_system_info(self):
         info_window = tk.Toplevel(self)
@@ -386,8 +404,7 @@ class Application(tk.Frame):
 
         # Make text read-only
         text.config(state='disabled')
-
-    #----------------------------------------------------
+#----------------------------------------------------
     def create_interface_mode_button(self):
         self.interface_mode_button = tk.Button(
             self,
@@ -401,7 +418,8 @@ class Application(tk.Frame):
             bd=3,
             font=("Arial", 10, "bold")
         )
-        self.interface_mode_button.place(relx=1.0, rely=0.1, anchor="ne", relwidth=0.25)
+        self.interface_mode_button.place(x=-0, y=32, anchor="ne", relwidth=0.25, relx=1.0)
+
         
     def update_interface_mode(self):
         try:
@@ -420,8 +438,7 @@ class Application(tk.Frame):
         
         # Update every 5 seconds
         self.after(5000, self.update_interface_mode)
-
-    #-------------------------------------------------------
+#-------------------------------------------------------
     def select_interface(self):
         interfaces = self.get_interfaces()
         if not interfaces:
@@ -506,16 +523,49 @@ class Application(tk.Frame):
             self.managed_btn.config(relief='raised', bg='#27ae60', fg='white')
 
 #------------------------------------------------------
+    def show_public_ip(self):
+        try:
+            import socket
+            import requests
+
+            # ===== ΠΑΡΕ ΤΟΠΙΚΗ IP =====
+            hostname = socket.gethostname()
+            local_ip = socket.gethostbyname(hostname)
+
+            # ===== ΠΑΡΕ ΔΗΜΟΣΙΑ IPv4 =====
+            public_ip = "Άγνωστη"
+            services = [
+                "https://api.ipify.org?format=text",
+                "https://ipv4.icanhazip.com",
+                "https://ifconfig.me/ip",
+            ]
+            for service in services:
+                try:
+                    response = requests.get(service, timeout=5)
+                    ip = response.text.strip()
+                    if "." in ip:  # IPv4 έλεγχος
+                        public_ip = ip
+                        break
+                except requests.RequestException:
+                    continue
+
+            # ===== ΕΜΦΑΝΙΣΕ ΤΟ ΑΠΟΤΕΛΕΣΜΑ =====
+            messagebox.showinfo(
+                "Διευθύνσεις IP",
+                f"🔹 Δημόσια IPv4: {public_ip}\n🔸 Τοπική LAN IP: {local_ip}"
+            )
+        except Exception as e:
+            messagebox.showerror("Σφάλμα", f"Σφάλμα:\n{e}")
+#------------------------------------------------------
 # Εκκίνηση του GUI
 if __name__ == "__main__":
     root = tk.Tk()
     root.geometry("800x600")
     root.title("Kali Linux Control Panel")
     root.configure(bg="#2c3e50")
-    
-    # Check if running as root
+#-------------------------------------------------------
+# Check if running as root
     if os.geteuid() != 0:
         messagebox.showwarning("Warning", "Some features require root privileges. Run with sudo for full functionality.")
-    
-    app = Application(master=root)
-    app.mainloop()
+        app = Application(master=root)
+        app.mainloop()
