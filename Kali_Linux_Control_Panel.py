@@ -11,6 +11,122 @@ import socket
 # Δημιουργία του GUI για τον έλεγχο του Kali Linux
 class Application(tk.Frame):
 #------------------------------------------------------
+    # Αρχικοποίηση του GUI 2
+    def __init__(self, master=None):
+        super().__init__(master)
+        self.master = master
+        self.master.title("Kali Linux Control Panel")  # Νέος τίτλος
+        self.master.geometry("1000x700")              # Μεγαλύτερο παράθυρο
+        self.pack(fill="both", expand=True)
+
+
+        self.custom_colored_buttons = []   # σημαντικό!
+
+        self.selected_interface = "wlan0"
+        self.interface_mode = "managed"
+        self.dark_mode = False
+        self.menu_visible = True  # αν χρειάζεται
+
+        self.menu_frame = tk.Frame(self)
+        self.menu_frame.pack(side="left", fill="y")
+
+        self.create_widgets()
+        self.update_firewall_status()
+        self.update_interface_mode()
+        self.apply_theme()
+
+    def toggle_menu(self):
+        if self.menu_visible:
+            self.menu_frame.place_forget()
+            self.menu_visible = False
+        else:
+            self.menu_frame.place(relx=1.0, x=-40, y=68, anchor="ne", width=100)
+            self.menu_visible = True
+
+    def show_settings(self):
+    # Δημιουργία νέου παραθύρου
+        settings_window = tk.Toplevel(self.master)
+        settings_window.title("Scan")
+        settings_window.geometry("500x300")
+
+        # Φόρτωση και εμφάνιση εικόνας
+        self.create_settings_window(settings_window)
+
+    def create_settings_window(self, window):
+        try:
+            image = Image.open("kalilinux.png")  # Η εικόνα πρέπει να είναι στον ίδιο φάκελο
+            image = image.resize((400, 250), Image.Resampling.LANCZOS)
+            photo = ImageTk.PhotoImage(image)
+
+            image_label = tk.Label(window, image=photo)
+            image_label.image = photo  # Κρατάμε αναφορά ώστε να μην "σβήσει" η εικόνα
+            image_label.pack(expand=True)
+        except Exception as e:
+            tk.Label(window, text=f"Σφάλμα: {e}", fg="red").pack(pady=20)
+#------------------------------------------------------
+    def toggle_theme(self):
+        self.dark_mode = not self.dark_mode
+        self.apply_theme()
+
+    def themed_toplevel(self, title=""):
+        top = tk.Toplevel(self.master)
+        top.title(title)
+        self.apply_theme_to_window(top)
+        return top
+
+
+    def apply_theme(self):
+        if self.dark_mode:
+            bg_color = "#2c3e50"  # σκούρο μπλε φόντο
+        else:
+            bg_color = "white"    # λευκό φόντο
+
+        # Αλλάζουμε background στα βασικά container
+        self.master.configure(bg=bg_color)
+        self.configure(bg=bg_color)
+        self.menu_frame.configure(bg=bg_color)
+
+        # Αλλάζουμε το φόντο στα παιδιά των frame και label (χωρίς να πειράζουμε κουμπιά)
+        def recursive_bg_configure(widget):
+            if isinstance(widget, (tk.Frame, tk.Label)):
+                widget.configure(bg=bg_color)
+            # Προχωράμε στα παιδιά του widget
+            for child in widget.winfo_children():
+                recursive_bg_configure(child)
+
+        recursive_bg_configure(self)
+
+        # Αλλάζουμε μόνο το κείμενο του κουμπιού θέματος
+        if self.dark_mode:
+            self.theme_btn.configure(text="Light Mode")
+        else:
+            self.theme_btn.configure(text="Dark Mode")
+
+        def apply_theme_to_window(self, window):
+            if self.dark_mode:
+                bg_color = "#2c3e50"
+                fg_color = "white"
+            else:
+                bg_color = "white"
+                fg_color = "black"
+
+            window.configure(bg=bg_color)
+
+    # Αναδρομικά αλλάζουμε και όλα τα παιδιά του παραθύρου
+            def recursive_configure(widget):
+                if isinstance(widget, tk.Button):
+                    widget.configure(bg="#34495e" if self.dark_mode else "SystemButtonFace",
+                                    fg=fg_color,
+                                    activebackground="#34495e" if self.dark_mode else "SystemButtonFace",
+                                    activeforeground=fg_color)
+                elif isinstance(widget, (tk.Frame, tk.Label)):
+                    widget.configure(bg=bg_color, fg=fg_color if isinstance(widget, tk.Label) else None)
+
+                for child in widget.winfo_children():
+                    recursive_configure(child)
+
+            recursive_configure(window)
+#------------------------------------------------------
     def show_mac_address(self):
         try:
             interface = self.selected_interface
@@ -21,17 +137,6 @@ class Application(tk.Frame):
         except Exception as e:
             from tkinter import messagebox
             messagebox.showerror("Σφάλμα", f"Αδυναμία ανάγνωσης MAC: {e}")
-#------------------------------------------------------
-    def __init__(self, master=None):
-        super().__init__(master)
-        self.master = master
-        self.pack(fill="both", expand=True)
-        self.selected_interface = "wlan0"  # Προεπιλεγμένο interface
-        self.interface_mode = "managed"    # Προεπιλεγμένο mode
-        self.create_widgets()
-        self.update_firewall_status()
-        self.update_interface_mode()
-
 #------------------------------------------------------
 # Δημιουργία των γραφικών στοιχείων του GUI
 # Προσπάθεια φόρτωσης εικόνας - αν δεν υπάρχει, συνέχισε χωρίς αυτή
@@ -74,7 +179,7 @@ class Application(tk.Frame):
         self.managed_btn = tk.Button(self, text="Managed", 
                                    command=lambda: self.set_interface_mode('managed'),
                                    bg="#27ae60", fg="white", font=("Arial", 10, "bold"))
-        self.managed_btn.place(relx=0.824, rely=0.801, relwidth=0.329, anchor=tk.S)
+        self.managed_btn.place(relx=0.825,rely=0.800, relwidth=0.33, anchor=tk.S)
 #-------------------------------------------------------
         # Public IP Check Button        
         self.ip_check_button = tk.Button(
@@ -85,10 +190,33 @@ class Application(tk.Frame):
 #-------------------------------------------------------
         # MAC Address Check Button
         self.mac_check_button = tk.Button(
-        self, text="Check MAC Address", command=self.show_mac_address,
+        self, text="Check MAC ", command=self.show_mac_address,
     bg="#2980b9", fg="white", font=("Arial", 10, "bold")
 )
-        self.mac_check_button.place(relx=1.0, rely=0.11, anchor="ne", relwidth=0.25)
+        self.mac_check_button.place(x=50, y=120, width=128, height=30) 
+#-------------------------------------------------------
+         # Interface Mode 2 Button
+        self.menu_button = tk.Button(self, text="☰", font=("Arial", 14), command=self.toggle_menu)
+        self.menu_button.place(relx=1.0, x=-2, y=70, anchor="ne", width=30, height=30)
+
+        # Απόκρυφο μενού ρυθμίσεων (που εμφανίζεται κάτω από το κουμπί)
+        self.menu_frame = tk.Frame(self, bg="lightgray", bd=1, relief="raised")
+        self.menu_visible = False
+#-------------------------------------------------------
+        # Δημιουργία κουμπιών στο μενού
+        self.settings_btn = tk.Button(self.menu_frame, text="Scan", command=self.show_settings,
+                              bg="#007acc", fg="white", activebackground="#005f99", activeforeground="white")
+        self.settings_btn.pack(fill="x")
+#-------------------------------------------------------
+        self.theme_btn = tk.Button(self.menu_frame, text="Dark Mode", command=self.toggle_theme,
+                           bg="#FFD700",  # χρυσό-κίτρινο
+                           fg="black",   # μαύρο κείμενο για αντίθεση
+                           activebackground="#E6C200",  # σκούρο κίτρινο για ενεργό πάτημα
+                           activeforeground="black")
+        self.theme_btn.pack(fill="x")
+
+        self.dark_mode = False  # Default is Light Mode
+        self.apply_theme()
 
 #-------------------------------------------------------
         # Interface Mode Status Button
