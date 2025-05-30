@@ -7,34 +7,32 @@ import tkinter.messagebox as messagebox
 import random
 import platform
 import socket
+import tkinter as tk
+from tkinter import ttk
+import re
 #------------------------------------------------------
 # Δημιουργία του GUI για τον έλεγχο του Kali Linux
 class Application(tk.Frame):
 #------------------------------------------------------
-    # Αρχικοποίηση του GUI 2
+    # Αρχικοποίηση της εφαρμογής
     def __init__(self, master=None):
         super().__init__(master)
         self.master = master
-        self.master.title("Kali Linux Control Panel")  # Νέος τίτλος
-        self.master.geometry("1000x700")              # Μεγαλύτερο παράθυρο
+        self.master.title("Kali Linux Control Panel")  
+        self.master.geometry("1000x700")              
         self.pack(fill="both", expand=True)
-
-
-        self.custom_colored_buttons = []   # σημαντικό!
-
+        self.custom_colored_buttons = [] 
         self.selected_interface = "wlan0"
         self.interface_mode = "managed"
         self.dark_mode = False
-        self.menu_visible = True  # αν χρειάζεται
-
+        self.menu_visible = True  # 
         self.menu_frame = tk.Frame(self)
         self.menu_frame.pack(side="left", fill="y")
-
         self.create_widgets()
         self.update_firewall_status()
         self.update_interface_mode()
-        self.apply_theme()
-
+        self.apply_theme()    
+#------------------------------------------------------
     def toggle_menu(self):
         if self.menu_visible:
             self.menu_frame.place_forget()
@@ -44,14 +42,149 @@ class Application(tk.Frame):
             self.menu_visible = True
 
     def show_settings(self):
-    # Δημιουργία νέου παραθύρου
         settings_window = tk.Toplevel(self.master)
         settings_window.title("Scan")
-        settings_window.geometry("500x300")
+        width, height = 400, 200
+        tk.Label(settings_window, text="Select Interface:").pack(anchor="nw", padx=10, pady=(10,0))
+        self.interface_var = tk.StringVar(value="wlan0")
 
-        # Φόρτωση και εμφάνιση εικόνας
-        self.create_settings_window(settings_window)
+        # Θέση και μέγεθος κλπ
+        main_x = self.master.winfo_x()
+        main_y = self.master.winfo_y()
+        main_width = self.master.winfo_width()
+        main_height = self.master.winfo_height()
 
+        x = main_x + (main_width - width) // 2
+        y = main_y + (main_height - height) // 2
+
+        settings_window.geometry(f"{width}x{height}+{x}+{y}")
+         # Ρύθμιση σκούρου φόντου
+        settings_window.configure(bg="#222222")
+    
+        # Πάρε θέση & μέγεθος main window
+        main_x = self.master.winfo_x()
+        main_y = self.master.winfo_y()
+        main_width = self.master.winfo_width()
+        main_height = self.master.winfo_height()
+
+        # Υπολόγισε θέση για να κεντραριστεί το παράθυρο scan πάνω στο main
+        x = main_x + (main_width - width) // 2
+        y = main_y + (main_height - height) // 2
+
+        settings_window.geometry(f"{width}x{height}+{x}+{y}")
+
+        # Λίστα interfaces (με την υπάρχουσα μέθοδο σου)
+        interfaces = self.get_wireless_interfaces()
+
+        # Δημιουργία combobox
+        self.interface_var = tk.StringVar()
+        interface_combo = ttk.Combobox(settings_window, textvariable=self.interface_var, values=interfaces, state="readonly")
+        interface_combo.place(x=10, y=10)  # πάνω αριστερά, 10px padding
+
+        # Προαιρετικά, ορίζουμε default επιλογή αν υπάρχουν interfaces
+        if interfaces:
+            interface_combo.current(0)
+#------------------------------------------------------
+        button_width = 16 # π.χ. 20 χαρακτήρες πλάτος
+        button_height = 0 # π.χ. 2 γραμμές ύψος
+
+        airdum_btn = tk.Button(settings_window, text="Start Airdump Scan", command=self.start_airdump_scan, width=button_width, height=button_height)
+        airdum_btn.place(x=18, y=36)
+
+        nmap_btn = tk.Button(settings_window, text="Start Nmap Scan", command=self.start_nmap_scan, width=button_width, height=button_height)
+        nmap_btn.place(x=18, y=70)
+
+#------------------------------------------------------
+    def get_wireless_interfaces(self):
+        import subprocess
+        try:
+            result = subprocess.run(['iw', 'dev'], capture_output=True, text=True)
+            lines = result.stdout.splitlines()
+            interfaces = []
+            for line in lines:
+                line = line.strip()
+                if line.startswith("Interface"):
+                    iface = line.split()[1]
+                    interfaces.append(iface)
+            return interfaces
+        except Exception as e:
+            print(f"Error getting wireless interfaces: {e}")
+            return []
+
+        def start_move(event):
+            settings_window.x = event.x
+            settings_window.y = event.y
+
+        def do_move(event):
+            x = event.x_root - settings_window.x
+            y = event.y_root - settings_window.y
+            settings_window.geometry(f"+{x}+{y}")
+
+        settings_window.bind("<Button-1>", start_move)
+        settings_window.bind("<B1-Motion>", do_move)
+
+    def start_airdump_scan(self):
+        import subprocess
+        interface = getattr(self, "interface_var", None)
+        if interface is None or not self.interface_var.get():
+            print("interface")
+            return
+        iface = self.interface_var.get()
+        try:
+            subprocess.Popen(["xfce4-terminal", "--hold", "-e", f"sudo airodump-ng {iface}"])
+        except Exception as e:
+            print(f"Error starting airodump-ng: {e}")
+#------------------------------------------------------
+    def start_nmap_scan(self):
+        scan_window = tk.Toplevel(self.master)
+        scan_window.title("Nmap Scan Options")
+        scan_window.geometry("400x250")
+
+        tk.Label(scan_window, text="Target IP or Domain:").pack(pady=5)
+        target_entry = tk.Entry(scan_window, width=40)
+        target_entry.pack()
+
+        scan_type = tk.StringVar(value="normal")  # default scan type
+
+        tk.Radiobutton(scan_window, text="Normal Scan", variable=scan_type, value="normal").pack(anchor="w", padx=20)
+        tk.Radiobutton(scan_window, text="Deep Scan", variable=scan_type, value="deep").pack(anchor="w", padx=20)
+        tk.Radiobutton(scan_window, text="Vulnerability Scan", variable=scan_type, value="vuln").pack(anchor="w", padx=20)
+
+        def run_scan(scan_type_value):
+            target = target_entry.get().strip()
+            if not target:
+                messagebox.showwarning("Input Required", "Please enter an IP or domain.")
+                return
+
+            # Remove protocol prefix
+            target = re.sub(r'^https?://', '', target)
+
+            if scan_type_value == "normal":
+                cmd = f"nmap {target}"
+            elif scan_type_value == "deep":
+                cmd = f"nmap -A -T4 {target}"
+            elif scan_type_value == "vuln":
+                cmd = f"nmap --script vuln {target}"
+            else:
+                return
+
+            try:
+                subprocess.Popen(["xfce4-terminal", "--hold", "-e", cmd])
+            except FileNotFoundError:
+                try:
+                    subprocess.Popen(["xterm", "-hold", "-e", cmd])
+                except FileNotFoundError:
+                    messagebox.showerror("Error", "No compatible terminal found.")
+
+            scan_window.destroy()  # σωστό όνομα παραθύρου!
+
+        # ➕ Προσθήκη κουμπιού εκκίνησης
+        tk.Button(scan_window, text="Run Scan", command=lambda: run_scan(scan_type.get())).pack(pady=15)
+
+
+
+
+#------------------------------------------------------
     def create_settings_window(self, window):
         try:
             image = Image.open("kalilinux.png")  # Η εικόνα πρέπει να είναι στον ίδιο φάκελο
@@ -86,7 +219,7 @@ class Application(tk.Frame):
         self.configure(bg=bg_color)
         self.menu_frame.configure(bg=bg_color)
 
-        # Αλλάζουμε το φόντο στα παιδιά των frame και label (χωρίς να πειράζουμε κουμπιά)
+        # Αλλάζουμε το φόντο των frame και label (χωρίς να πειράζουμε κουμπιά)
         def recursive_bg_configure(widget):
             if isinstance(widget, (tk.Frame, tk.Label)):
                 widget.configure(bg=bg_color)
