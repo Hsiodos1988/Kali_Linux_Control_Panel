@@ -1,4 +1,7 @@
 ![kalilinux](https://github.com/user-attachments/assets/f7fd6c55-e323-40db-9883-1b3b32071867)
+![2025-05-31_00-51](https://github.com/user-attachments/assets/1eb25e62-3f18-4367-a69a-5c79f1e863ae)
+![2025-05-31_00-53](https://github.com/user-attachments/assets/23aa08dc-ba2b-4ed0-a192-fc5300b5e513)
+
 # Kali Linux Control Panel
 
 A comprehensive GUI-based control panel for Kali Linux systems, designed to simplify common penetration testing and system administration tasks through an intuitive graphical interface.
