@@ -10,6 +10,11 @@ import socket
 import tkinter as tk
 from tkinter import ttk
 import re
+import subprocess
+import webbrowser
+import threading
+import webbrowser
+import time
 #------------------------------------------------------
 # Δημιουργία του GUI για τον έλεγχο του Kali Linux
 class Application(tk.Frame):
@@ -43,8 +48,8 @@ class Application(tk.Frame):
 
     def show_settings(self):
         settings_window = tk.Toplevel(self.master)
-        settings_window.title("Scan")
-        width, height = 400, 200
+        settings_window.title("Scan Wifi")
+        width, height = 600, 400
         tk.Label(settings_window, text="Select Interface:").pack(anchor="nw", padx=10, pady=(10,0))
         self.interface_var = tk.StringVar(value="wlan0")
 
@@ -85,16 +90,51 @@ class Application(tk.Frame):
         if interfaces:
             interface_combo.current(0)
 #------------------------------------------------------
-        button_width = 16 # π.χ. 20 χαρακτήρες πλάτος
-        button_height = 0 # π.χ. 2 γραμμές ύψος
-
-        airdum_btn = tk.Button(settings_window, text="Start Airdump Scan", command=self.start_airdump_scan, width=button_width, height=button_height)
+        button_width = 16
+        button_height = 2
+        spacing = 10
+        btn_pixel_height = button_height * 20
+        bg_color = "#34495e"
+        fg_color = "white"
+        font_style = ("Arial", 9, "bold")
+#-------------------------------------------------------
+        airdum_btn = tk.Button(settings_window, text="Start Airdump Scan",
+                            command=self.start_airdump_scan,
+                            width=button_width, height=button_height,
+                            bg=bg_color, fg=fg_color, font=font_style)
         airdum_btn.place(x=18, y=36)
-
-        nmap_btn = tk.Button(settings_window, text="Start Nmap Scan", command=self.start_nmap_scan, width=button_width, height=button_height)
-        nmap_btn.place(x=18, y=70)
+#-------------------------------------------------------
+        nmap_btn = tk.Button(settings_window, text="Start Nmap Scan",
+                            command=self.start_nmap_scan,
+                            width=button_width, height=button_height,
+                            bg=bg_color, fg=fg_color, font=font_style)
+        nmap_btn.place(x=18, y=36 + btn_pixel_height + spacing)
+#-------------------------------------------------------
+        arp_scan_btn = tk.Button(settings_window, text="ARP Scan       ",  # κενά για να ταιριάξει το μήκος
+                                command=self.arp_scan,
+                                width=button_width, height=button_height,
+                                bg=bg_color, fg=fg_color, font=font_style)
+        arp_scan_btn.place(x=18, y=36 + 2*(btn_pixel_height + spacing))
+#-------------------------------------------------------
+        masscan_btn = tk.Button(settings_window, text="Masscan Scan",
+                        command=self.masscan_scan,
+                        width=button_width, height=button_height,
+                        bg=bg_color, fg=fg_color, font=font_style)
+        masscan_btn.place(x=18, y=36 + 3*(btn_pixel_height + spacing))
+#-------------------------------------------------------
+        kismet_btn = tk.Button(settings_window, text="Kismet Scan", 
+                       command=self.start_kismet,
+                       width=button_width, height=button_height,
+                       bg=bg_color, fg=fg_color, font=font_style)
+        kismet_btn.place(x=18, y=36 + 4*(btn_pixel_height + spacing))  # κάτω από το Masscan
 
 #------------------------------------------------------
+        kill_btn = tk.Button(settings_window, text="Kill Processes", 
+                     command=self.kill_wlan0_processes,
+                     width=button_width, height=button_height,
+                     bg="red", fg="white", font=font_style)
+        kill_btn.place(x=18, y=36 + 5*(btn_pixel_height + spacing))  # κάτω από το Kismet
+#-------------------------------------------------
     def get_wireless_interfaces(self):
         import subprocess
         try:
@@ -179,11 +219,98 @@ class Application(tk.Frame):
             scan_window.destroy()  # σωστό όνομα παραθύρου!
 
         # ➕ Προσθήκη κουμπιού εκκίνησης
-        tk.Button(scan_window, text="Run Scan", command=lambda: run_scan(scan_type.get())).pack(pady=15)
+        tk.Button(scan_window, text="Run Scan Wifi", command=lambda: run_scan(scan_type.get())).pack(pady=15)
+#------------------------------------------------------
+    def arp_scan(self):
+        try:
+            # Ανοίγει terminal και τρέχει την εντολή arp-scan στο interface wlan0 π.χ.
+            subprocess.Popen([
+                "x-terminal-emulator", 
+                "-e", 
+                "bash -c 'sudo arp-scan --interface=wlan0 --localnet; echo \"Press any key to exit...\"; read -n 1'"
+            ])
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open terminal: {e}")
+           
+#------------------------------------------------------
+    def masscan_scan(self):
+    # Δημιουργούμε ένα popup παράθυρο για να πάρουμε IP ή IP range
+        def run_scan():
+            ip_range = ip_entry.get().strip()
+            if not ip_range:
+                messagebox.showwarning("Warning", "Please enter an IP or IP range")
+                return
+            scan_window.destroy()
 
+            # Τρέχουμε το masscan με το ip_range
+            try:
+                subprocess.Popen([
+                    "x-terminal-emulator",
+                    "-e",
+                    f"bash -c 'sudo masscan -p1-65535 {ip_range} --rate=1000; echo Press any key to exit; read -n 1'"
+                ])
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to start Masscan: {e}")
 
+        scan_window = tk.Toplevel(self)
+        scan_window.title("Masscan Scan")
+        scan_window.geometry("300x100")
+        scan_window.resizable(False, False)
 
+        label = tk.Label(scan_window, text="Enter IP or IP range:")
+        label.pack(pady=5)
 
+        ip_entry = tk.Entry(scan_window, width=30)
+        ip_entry.pack(pady=5)
+        ip_entry.focus()
+
+        btn_frame = tk.Frame(scan_window)
+        btn_frame.pack(pady=5)
+
+        ok_btn = tk.Button(btn_frame, text="Start Scan", command=run_scan)
+        ok_btn.pack(side=tk.LEFT, padx=5)
+
+        cancel_btn = tk.Button(btn_frame, text="Cancel", command=scan_window.destroy)
+        cancel_btn.pack(side=tk.LEFT, padx=5)
+#--------------------------------------
+    def start_kismet(self):
+        def run_kismet():
+            try:
+                # Εκτελεί το kismet σε νέο terminal
+                subprocess.Popen([
+                    "x-terminal-emulator",
+                    "-e",
+                    "bash -c 'sudo kismet'"
+                ])
+                # Καθυστέρηση πριν το άνοιγμα του browser
+                import time
+                time.sleep(5)
+                webbrowser.get('firefox').open("http://127.0.0.1:2501")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to run Kismet or open browser: {e}")
+
+        threading.Thread(target=run_kismet).start()
+#---------------------------------------
+
+    def kill_wlan0_processes(self):
+        try:
+            # Βρίσκει διεργασίες που χρησιμοποιούν wlan0
+            cmd = "lsof -n | grep wlan0 | awk '{print $2}' | sort -u"
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+            pids = result.stdout.strip().split('\n')
+
+            if not pids or pids == ['']:
+                messagebox.showinfo("Καθαρισμός", "Δεν βρέθηκαν διεργασίες που χρησιμοποιούν το wlan0.")
+                return
+
+            # Kill κάθε PID που σχετίζεται με wlan0
+            for pid in pids:
+                subprocess.run(["sudo", "kill", "-9", pid])
+
+            messagebox.showinfo("Επιτυχία", f"Τερματίστηκαν {len(pids)} διεργασίες που χρησιμοποιούσαν το wlan0.")
+
+        except Exception as e:
+            messagebox.showerror("Σφάλμα", f"Αποτυχία καθαρισμού: {e}")
 #------------------------------------------------------
     def create_settings_window(self, window):
         try:
@@ -196,7 +323,6 @@ class Application(tk.Frame):
             image_label.pack(expand=True)
         except Exception as e:
             tk.Label(window, text=f"Σφάλμα: {e}", fg="red").pack(pady=20)
-#------------------------------------------------------
     def toggle_theme(self):
         self.dark_mode = not self.dark_mode
         self.apply_theme()
@@ -206,7 +332,6 @@ class Application(tk.Frame):
         top.title(title)
         self.apply_theme_to_window(top)
         return top
-
 
     def apply_theme(self):
         if self.dark_mode:
@@ -337,7 +462,7 @@ class Application(tk.Frame):
         self.menu_visible = False
 #-------------------------------------------------------
         # Δημιουργία κουμπιών στο μενού
-        self.settings_btn = tk.Button(self.menu_frame, text="Scan", command=self.show_settings,
+        self.settings_btn = tk.Button(self.menu_frame, text="Scan Wifi", command=self.show_settings,
                               bg="#007acc", fg="white", activebackground="#005f99", activeforeground="white")
         self.settings_btn.pack(fill="x")
 #-------------------------------------------------------
@@ -370,12 +495,9 @@ class Application(tk.Frame):
 
     def update_system(self):
         try:
-            messagebox.showinfo("Info", "Starting system update...")
-            result = subprocess.run(["sudo", "apt", "update"], 
-                                  capture_output=True, text=True, check=True)
-            messagebox.showinfo("Success", "System updated successfully!")
-        except subprocess.CalledProcessError as e:
-            messagebox.showerror("Error", f"Update failed: {e}")
+            subprocess.Popen(["x-terminal-emulator", "-e", "bash -c 'sudo apt update; echo \"Press any key to exit...\"; read -n 1'"])
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open terminal: {e}")
 #------------------------------------------------------
     def create_upgrade_button(self):
         self.upgrade_button = tk.Button(self, text="Upgrade", command=self.upgrade_system,
@@ -384,26 +506,26 @@ class Application(tk.Frame):
 
     def upgrade_system(self):
         try:
-            messagebox.showinfo("Info", "Starting system upgrade... This may take a while.")
-            result = subprocess.run(["sudo", "apt", "full-upgrade", "-y"], 
-                                  capture_output=True, text=True, check=True)
-            messagebox.showinfo("Success", "System upgraded successfully!")
-        except subprocess.CalledProcessError as e:
-            messagebox.showerror("Error", f"Upgrade failed: {e}")
-#------------------------------------------------------
-    def create_fix_broken_button(self):
-        self.fix_broken_button = tk.Button(self, text="Fix Broken", command=self.fix_broken,
-                                         bg="#34495e", fg="white", font=("Arial", 9, "bold"))
-        self.fix_broken_button.place(x=170, y=50, width=80, height=30)
+            subprocess.Popen(["x-terminal-emulator", "-e", "bash -c 'sudo apt upgrade -y; echo \"Press any key to exit...\"; read -n 1'"])
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open terminal: {e}")
 
+#------------------------------------------------------
     def fix_broken(self):
         try:
-            messagebox.showinfo("Info", "Fixing broken packages...")
-            result = subprocess.run(["sudo", "apt", "--fix-broken", "install", "-y"], 
-                                  capture_output=True, text=True, check=True)
-            messagebox.showinfo("Success", "Broken packages fixed!")
-        except subprocess.CalledProcessError as e:
-            messagebox.showerror("Error", f"Fix failed: {e}")
+            subprocess.Popen([
+                "x-terminal-emulator", 
+                "-e", 
+                "bash -c 'sudo apt --fix-broken install -y; echo \"Press any key to exit...\"; read -n 1'"
+            ])
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open terminal: {e}")
+
+    def create_fix_broken_button(self):
+        self.fix_broken_button = tk.Button(self, text="Fix Broken", command=self.fix_broken,
+                                        bg="#34495e", fg="white", font=("Arial", 9, "bold"))
+        self.fix_broken_button.place(x=170, y=50,width=100, height=30)
+
 #------------------------------------------------------
     def create_clean_button(self):
         self.clean_system_button = tk.Button(self, text="Clean System", command=self.clean_system,
@@ -821,9 +943,8 @@ class Application(tk.Frame):
 # Εκκίνηση του GUI
 if __name__ == "__main__":
     root = tk.Tk()
-    root.geometry("800x600")
-    root.title("Kali Linux Control Panel")
-    root.configure(bg="#2c3e50")
+    app = Application(master=root)
+    app.mainloop()   
 #-------------------------------------------------------
 # Check if running as root
     if os.geteuid() != 0:
